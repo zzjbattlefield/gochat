@@ -1,0 +1,4 @@
+.git
+go.work*
+.vscode
+config/dev/
