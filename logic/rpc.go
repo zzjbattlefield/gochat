@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/smallnest/rpcx/server"
@@ -60,12 +61,27 @@ func (rpc *LogicRpc) Login(ctx context.Context, request *proto.LoginRequest, rep
 	if userInfo.ID == 0 || userInfo.Password != password {
 		return errors.New("用户名或密码错误")
 	}
-	sessionID, err := CreateAuthToken(ctx, model)
+	sessionID, err := CreateAuthToken(ctx, userInfo)
 	if err != nil {
 		return err
 	}
 	reply.Code = tools.CodeSuccess
 	reply.AuthToken = sessionID
+	return
+}
+
+func (rpc *LogicRpc) CheckAuth(ctx context.Context, request *proto.CheckAuthRequest, reply *proto.CheckAuthReponse) (err error) {
+	var tokenVal = make(map[string]string)
+	reply.Code = tools.CodeFail
+	authToken := request.AuthToken
+	tokenVal, err = RedisClient.HGetAll(ctx, authToken).Result()
+	if err != nil || len(tokenVal) == 0 {
+		config.Zap.Errorw("检测authToken失败", "authToken", authToken)
+		return
+	}
+	reply.UserID, _ = strconv.Atoi(tokenVal["userID"])
+	reply.UserName = tokenVal["userName"]
+	reply.Code = tools.CodeSuccess
 	return
 }
 

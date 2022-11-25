@@ -18,6 +18,10 @@ type FormRegister struct {
 	Password string `form:"passWord" json:"passWord" binding:"required"`
 }
 
+type FormCheckAuth struct {
+	AuthToken string `form:"authToken" json:"authToken" binding:"required"`
+}
+
 func Login(c *gin.Context) {
 	var formLogin FormLogin
 	if err := c.ShouldBindWith(&formLogin, binding.JSON); err != nil {
@@ -52,4 +56,24 @@ func Register(c *gin.Context) {
 		return
 	}
 	tools.SuccessWithMessage(c, "register success", authToken)
+}
+
+func CheckAuth(c *gin.Context) {
+	formCheckAuth := &FormCheckAuth{}
+	err := c.ShouldBindBodyWith(formCheckAuth, binding.JSON)
+	if err != nil {
+		tools.FailWithMessage(c, err.Error())
+		return
+	}
+
+	code, userName, userID := rpc.RpcLoginObj.CheckAuth(&proto.CheckAuthRequest{AuthToken: formCheckAuth.AuthToken})
+	if code == tools.CodeFail {
+		tools.FailWithMessage(c, "校验失败")
+		return
+	}
+	userData := map[string]interface{}{
+		"userName": userName,
+		"userID":   userID,
+	}
+	tools.SuccessWithMessage(c, "获取成功", userData)
 }

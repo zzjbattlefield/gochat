@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/smallnest/rpcx/client"
+	"github.com/zzjbattlefield/IM_GO/config"
 	"github.com/zzjbattlefield/IM_GO/proto"
 )
 
@@ -50,5 +51,15 @@ func (rpc *RpcLogic) Register(request *proto.RegisterRequest) (code int, authTok
 	}
 	authToken = reply.AuthToken
 	code = reply.Code
+	return
+}
+
+func (rpc *RpcLogic) CheckAuth(request *proto.CheckAuthRequest) (code int, userName string, userID int) {
+	reply := new(proto.CheckAuthReponse)
+	LogicRpcClient.Call(context.Background(), "CheckAuth", request, reply)
+	code = reply.Code
+	userName = reply.UserName
+	userID = reply.UserID
+	config.Zap.Infoln("userID:", userID, " userName:", userName)
 	return
 }

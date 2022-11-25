@@ -7,11 +7,13 @@ import (
 	"sync"
 
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 )
 
 var once sync.Once
 var realPath string
 var Conf *Config
+var Zap *zap.SugaredLogger
 
 const (
 	FailReplyCode    = 1
@@ -71,6 +73,7 @@ func init() {
 
 func Init() {
 	once.Do(func() {
+		Zap = zap.NewExample().Sugar()
 		env := GetMode()
 		realPath = getCurrentDir()
 		configPath := realPath + "/" + env + "/"
