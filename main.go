@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/zzjbattlefield/IM_GO/api"
+	"github.com/zzjbattlefield/IM_GO/connect"
 	"github.com/zzjbattlefield/IM_GO/logic"
 )
 
@@ -18,6 +19,8 @@ func main() {
 		api.Run()
 	case "logic":
 		logic.New().Run()
+	case "connect":
+		connect.New().Run()
 	default:
 		fmt.Println("param error!")
 	}

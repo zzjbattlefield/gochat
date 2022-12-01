@@ -22,7 +22,33 @@ const (
 
 type Config struct {
 	Common    Common
+	Connect   ConnectConfig
 	ApiConfig ApiConfig
+}
+
+type ConnectConfig struct {
+	ConnectBase                ConnectBase                `mapstructure:"connect-base"`
+	ConnectBucket              ConnectBucket              `mapstructure:"connect-bucket"`
+	ConnectWebSocket           ConnectWebSocket           `mapstructure:"connect-websocket"`
+	ConnectRpcAddressWebSocket ConnectRpcAddressWebSocket `mapstructure:"connect-rpcAddress-websocket"`
+}
+
+type ConnectRpcAddressWebSocket struct {
+	Address string `mapstructure:"address"`
+}
+
+type ConnectBase struct {
+}
+
+type ConnectBucket struct {
+	CpuNum                     int `mapstructure:"cpuNum"`
+	PushRoomMessageChannelSize int `mapstructure:"pushRoomMessageChannelSize"`
+	RoutineNum                 int `mapstructure:"routineNum"`
+	ChannelSize                int `mapstructure:"channelSize"`
+}
+
+type ConnectWebSocket struct {
+	Bind string `mapstructure:"bind"`
 }
 
 type ApiConfig struct {
@@ -36,6 +62,17 @@ type ApiBase struct {
 type Common struct {
 	CommonMysql CommonMysql `mapstructure:"common-mysql"`
 	CommonRedis CommonRedis `mapstructure:"common-redis"`
+	CommentEtcd CommentEtcd `mapstructure:"common-etcd"`
+}
+
+type CommentEtcd struct {
+	Host              string `mapstructure:"host"`
+	BasePath          string `mapstructure:"basePath"`
+	ServerPathLogic   string `mapstructure:"serverPathLogic"`
+	ServerPathConnect string `mapstructure:"serverPathConnect"`
+	UserName          string `mapstructure:"userName"`
+	Password          string `mapstructure:"password"`
+	ConnectionTimeout int    `mapstructure:"connectionTimeout"`
 }
 
 type CommonMysql struct {
@@ -93,8 +130,14 @@ func Init() {
 		if err != nil {
 			panic(err)
 		}
+		viper.SetConfigName("/connect")
+		err = viper.MergeInConfig()
+		if err != nil {
+			panic(err)
+		}
 		Conf = new(Config)
 		viper.Unmarshal(&Conf.Common)
 		viper.Unmarshal(&Conf.ApiConfig)
+		viper.Unmarshal(&Conf.Connect)
 	})
 }
