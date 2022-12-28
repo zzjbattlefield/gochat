@@ -70,6 +70,54 @@ func (rpc *LogicRpc) Login(ctx context.Context, request *proto.LoginRequest, rep
 	return
 }
 
+func (rpc *LogicRpc) Connect(ctx context.Context, request *proto.ConnectRequest, reply *proto.ConnectReply) (err error) {
+	logic := new(Logic)
+	config.Zap.Infoln("get args authToken is:", request.AuthToken)
+	sessionID := tools.GetSessionName(request.AuthToken)
+	userInfo, err := RedisClient.HGetAll(ctx, sessionID).Result()
+	if err != nil {
+		config.Zap.Errorf("redis HGetAll Key: %s error: %s", sessionID, err.Error())
+		return err
+	}
+	reply.UserID, _ = strconv.Atoi(userInfo["userID"])
+	if len(userInfo) < 0 {
+		reply.UserID = 0
+		return
+	}
+	roomUserkey := logic.GetRoomUserKey(strconv.Itoa(request.RoomID))
+	userKey := logic.GetUserKey(userInfo["userID"])
+
+	//绑定当前用户所在的serviceID
+	err = RedisClient.Set(ctx, userKey, request.ServiceID, config.RedisBaseValidTime*time.Second).Err()
+	if err != nil {
+		config.Zap.Errorf("redis Set error: %s", err.Error())
+		return
+	}
+	if RedisClient.HGet(ctx, roomUserkey, userInfo["userID"]).Val() == "" {
+		RedisClient.HSet(ctx, roomUserkey, userInfo["userID"], userInfo["Name"])
+		RedisClient.Incr(ctx, logic.GetRoomOnlineKey(strconv.Itoa(request.RoomID)))
+	}
+	config.Zap.Infoln("logic rpc userID", reply.UserID)
+	return
+}
+
+func (rpc *LogicRpc) DisConnect(ctx context.Context, request *proto.DisConnectRequest, reply *proto.DisConnectReply) (err error) {
+	logic := new(Logic)
+	roomUserKey := logic.GetRoomUserKey(strconv.Itoa(request.RoomID))
+	count, _ := RedisClient.Get(ctx, logic.GetRoomOnlineKey(strconv.Itoa(request.RoomID))).Int()
+	if count > 0 {
+		RedisClient.Decr(ctx, logic.GetRoomOnlineKey(strconv.Itoa(request.RoomID))).Result()
+	}
+	if request.UserID > 0 {
+		if err = RedisClient.Del(ctx, roomUserKey, strconv.Itoa(request.UserID)).Err(); err != nil {
+			config.Zap.Warnf("RedisCli HGetAll roomUserInfo key:%s, err: %s", roomUserKey, err)
+		}
+		//TODO:广播一下当前的房间信息
+	}
+	return
+
+}
+
 func (rpc *LogicRpc) CheckAuth(ctx context.Context, request *proto.CheckAuthRequest, reply *proto.CheckAuthReponse) (err error) {
 	var tokenVal = make(map[string]string)
 	reply.Code = tools.CodeFail
@@ -85,19 +133,19 @@ func (rpc *LogicRpc) CheckAuth(ctx context.Context, request *proto.CheckAuthRequ
 	return
 }
 
-func CreateAuthToken(ctx context.Context, user *model.UserModel) (authToken string, err error) {
-	randStr := tools.GetRandString(32)
+func CreateAuthToken(ctx context.Context, user *model.UserModel) (randStr string, err error) {
+	randStr = tools.GetRandString(32)
 	sessionID := tools.CreateSessionId(randStr)
 	sessionData := make(map[string]interface{})
 	sessionData["userName"] = user.UserName
 	sessionData["userID"] = user.ID
-	err = RedisClient.HSet(ctx, sessionID, sessionData).Err()
+	err = RedisClient.HMSet(ctx, sessionID, sessionData).Err()
 	if err != nil {
-		return "", err
+		return
 	}
 	err = RedisClient.Expire(ctx, sessionID, 86400*time.Second).Err()
 	if err != nil {
-		return "", err
+		return
 	}
-	return sessionID, nil
+	return
 }

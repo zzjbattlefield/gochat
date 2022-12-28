@@ -20,7 +20,6 @@ func New() *Connect {
 }
 
 func (c *Connect) Run() {
-	//TODO:
 	connectConfig := config.Conf.Connect
 	//1.initLogicRpcClient
 	c.InitLogicRpcClient()
@@ -31,9 +30,7 @@ func (c *Connect) Run() {
 	Buckets := make([]*Bucket, cpuNum)
 	for i := 0; i < cpuNum; i++ {
 		Buckets[i] = NewBucket(&BucketOption{
-			pushRoomMesssageChanSize: connectConfig.ConnectBucket.PushRoomMessageChannelSize,
-			routineNum:               connectConfig.ConnectBucket.RoutineNum,
-			ChannelSize:              connectConfig.ConnectBucket.ChannelSize,
+			routinueAmount: connectConfig.ConnectBucket.RoutineAmount,
 		})
 	}
 	DefaultService = NewService(Buckets, ServiceOption{

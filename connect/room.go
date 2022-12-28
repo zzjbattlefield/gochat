@@ -1,6 +1,13 @@
 package connect
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/zzjbattlefield/IM_GO/config"
+	"github.com/zzjbattlefield/IM_GO/proto"
+)
+
+const noRoom = -1
 
 type Room struct {
 	ID          int
@@ -8,6 +15,13 @@ type Room struct {
 	OnlineCount int
 	next        *Channel
 	drop        bool //如果房间已经没有连接了为true bucket会把房间删掉
+}
+
+func NewRoom(roomID int) *Room {
+	room := new(Room)
+	room.ID = roomID
+	room.drop = false
+	return room
 }
 
 // 把channel从双向链表中删除
@@ -29,4 +43,27 @@ func (r *Room) DeleteChannel(ch *Channel) bool {
 	}
 
 	return r.drop
+}
+
+// 遍历room下的所有用户把msg传给他们
+func (r *Room) Push(msg *proto.Message) {
+	r.rlock.RLock()
+	defer r.rlock.RUnlock()
+	for ch := r.next; ch != nil; ch = ch.next {
+		if err := ch.Push(msg); err != nil {
+			config.Zap.Errorf("push msg err:%v", err.Error())
+		}
+	}
+}
+
+// 将ch加到双链表中
+func (r *Room) Put(ch *Channel) (err error) {
+	if r.next != nil {
+		r.next.prev = ch
+	}
+	ch.next = r.next
+	ch.prev = nil
+	r.next = ch
+	r.OnlineCount++
+	return
 }

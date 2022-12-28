@@ -16,8 +16,16 @@ var Conf *Config
 var Zap *zap.SugaredLogger
 
 const (
-	FailReplyCode    = 1
-	SuccessReplyCode = 0
+	FailReplyCode         = 1
+	SuccessReplyCode      = 0
+	RedisBaseValidTime    = 86400
+	RedisPrefix           = "chat_"
+	RedisRoomPrefix       = "chat_room_"
+	RedisRoomOnlinePrefix = "chat_room_online_count_"
+	OpSingleSend          = 2 // single user
+	OpRoomSend            = 3 // send to room
+	OpRoomCountSend       = 4 // get online user count
+	OpRoomInfoSend        = 5 // send info to room
 )
 
 type Config struct {
@@ -41,10 +49,12 @@ type ConnectBase struct {
 }
 
 type ConnectBucket struct {
-	CpuNum                     int `mapstructure:"cpuNum"`
-	PushRoomMessageChannelSize int `mapstructure:"pushRoomMessageChannelSize"`
-	RoutineNum                 int `mapstructure:"routineNum"`
-	ChannelSize                int `mapstructure:"channelSize"`
+	CpuNum        int    `mapstructure:"cpuNum"`
+	Channel       int    `mapstructure:"channel"`
+	Room          int    `mapstructure:"room"`
+	SrvProto      int    `mapstructure:"svrProto"`
+	RoutineAmount uint64 `mapstructure:"routineAmount"`
+	RoutineSize   int    `mapstructure:"routineSize"`
 }
 
 type ConnectWebSocket struct {

@@ -1,6 +1,7 @@
 package connect
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strings"
@@ -12,12 +13,12 @@ import (
 	"github.com/smallnest/rpcx/client"
 	"github.com/smallnest/rpcx/server"
 	"github.com/zzjbattlefield/IM_GO/config"
+	"github.com/zzjbattlefield/IM_GO/proto"
 	"github.com/zzjbattlefield/IM_GO/tools"
 )
 
 var LogicRpcClient client.XClient
 var once sync.Once
-var RpcLoginObj *ConnectRpc
 
 type ConnectRpc struct {
 }
@@ -29,13 +30,26 @@ func (c *Connect) InitLogicRpcClient() (err error) {
 			panic(err)
 		}
 		LogicRpcClient = client.NewXClient("LogicRpc", client.Failtry, client.RandomSelect, d, client.DefaultOption)
-
-		RpcLoginObj = new(ConnectRpc)
 	})
 	if LogicRpcClient == nil {
 		panic("rpc client启动失败")
 	}
 	return nil
+}
+
+func (c *ConnectRpc) Connect(connReq *proto.ConnectRequest) (userID int, err error) {
+	reply := &proto.ConnectReply{}
+	if err = LogicRpcClient.Call(context.Background(), "Connect", connReq, reply); err != nil {
+		config.Zap.Errorln("fail to call Connect:", err)
+	}
+	config.Zap.Infoln("get connect info userID:", reply.UserID)
+	userID = reply.UserID
+	return
+}
+
+func (c *ConnectRpc) DisConnect(req *proto.DisConnectRequest) error {
+	reply := &proto.DisConnectReply{}
+	return LogicRpcClient.Call(context.Background(), "DisConnect", req, reply)
 }
 
 func (c *Connect) initConnectWebsocketServer() (err error) {
@@ -57,7 +71,6 @@ func (c *Connect) initConnectWebsocketServer() (err error) {
 	}
 	return
 }
-
 func addRegistryPlugin(s *server.Server, network, address string) {
 	r := &serverplugin.EtcdV3RegisterPlugin{
 		ServiceAddress: network + "@" + address,

@@ -7,9 +7,8 @@ import (
 )
 
 type Service struct {
-	ID          string
 	Buckets     []*Bucket
-	bucketIndex int
+	bucketIndex uint32
 	Option      ServiceOption
 }
 
@@ -27,14 +26,18 @@ func NewService(b []*Bucket, option ServiceOption) *Service {
 	return &Service{
 		Buckets:     b,
 		Option:      option,
-		bucketIndex: len(b),
+		bucketIndex: uint32(len(b)),
 	}
 }
 
-func (s *Service) Connect(request proto.ConnectRequest) {
-
+func (s *Service) Connect(request *proto.ConnectRequest) (userID int, err error) {
+	connRpc := new(ConnectRpc)
+	userID, err = connRpc.Connect(request)
+	return
 }
 
-func (s *Service) DisConnect() {
-
+func (s *Service) DisConnect(request *proto.DisConnectRequest) error {
+	connRpc := new(ConnectRpc)
+	err := connRpc.DisConnect(request)
+	return err
 }

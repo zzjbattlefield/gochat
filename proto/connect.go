@@ -1,7 +1,7 @@
 package proto
 
 type PushRoomMessageReqeust struct {
-	Msg    string
+	Msg    Message
 	RoomID int
 }
 
@@ -12,9 +12,18 @@ type Message struct {
 }
 
 type ConnectRequest struct {
-	AuthToken string
-	RoomID    int
-	ServiceID string
+	AuthToken string `json:"authToken"`
+	RoomID    int    `json:"roomId"`
+	ServiceID string `json:"serverId"`
+}
+
+type DisConnectRequest struct {
+	RoomID int
+	UserID int
+}
+
+type DisConnectReply struct {
+	Has bool
 }
 
 type ConnectReply struct {

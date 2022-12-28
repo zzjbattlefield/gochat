@@ -25,3 +25,7 @@ func Md5(content string) (hashString string) {
 	io.WriteString(h, content)
 	return hex.EncodeToString(h.Sum(nil))
 }
+
+func GetSessionName(sessionID string) string {
+	return SessionPrefix + sessionID
+}
