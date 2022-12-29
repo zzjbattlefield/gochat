@@ -83,6 +83,20 @@ func (s *Service) readPump(ch *Channel, c *Connect) {
 	defer func() {
 		//断线的时候要清空一下redis里的连接信息
 		config.Zap.Infoln("start disConnect")
+		if ch.Room == nil || ch.UserID == 0 {
+			config.Zap.Infoln("room and userid eq 0")
+			ch.conn.Close()
+			return
+		}
+		config.Zap.Infoln("exec disConnect...")
+		disConnectReq := new(proto.DisConnectRequest)
+		disConnectReq.RoomID = ch.Room.ID
+		disConnectReq.UserID = ch.UserID
+		s.Bucket(ch.UserID).DeleteChannel(ch)
+		if err := s.DisConnect(disConnectReq); err != nil {
+			config.Zap.Errorf("disConnect error :%v", err)
+		}
+		ch.conn.Close()
 	}()
 	for {
 		_, message, err := ch.conn.ReadMessage()
@@ -94,7 +108,7 @@ func (s *Service) readPump(ch *Channel, c *Connect) {
 		if message == nil {
 			return
 		}
-		var connRequest *proto.ConnectRequest
+		var connRequest = new(proto.ConnectRequest)
 		config.Zap.Infoln("get message:", string(message))
 		if err = json.Unmarshal(message, &connRequest); err != nil {
 			config.Zap.Errorf("message struct:%v, error is:%v", &connRequest, err.Error())
