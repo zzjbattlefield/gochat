@@ -15,6 +15,7 @@ func InitRouter() *gin.Engine {
 	r := gin.Default()
 	r.Use(CorsMiddleware())
 	initUserRouter(r)
+	initPushRouter(r)
 	return r
 }
 
@@ -27,6 +28,16 @@ func initUserRouter(r *gin.Engine) {
 	{
 		userGroup.POST("/checkAuth", handler.CheckAuth)
 		userGroup.POST("/logout")
+	}
+}
+
+// 推送消息相关路由
+func initPushRouter(r *gin.Engine) {
+	pushGroup := r.Group("/push")
+	pushGroup.Use(CheckAuthToken())
+	{
+		pushGroup.POST("/getRoomInfo", handler.GetRoomInfo)
+		pushGroup.POST("/pushRoom", handler.PushRoom)
 	}
 }
 

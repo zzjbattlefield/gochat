@@ -6,6 +6,8 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"io"
+
+	"github.com/bwmarrin/snowflake"
 )
 
 const SessionPrefix = "sess_"
@@ -28,4 +30,9 @@ func Md5(content string) (hashString string) {
 
 func GetSessionName(sessionID string) string {
 	return SessionPrefix + sessionID
+}
+
+func GetSnowFlakeId() string {
+	node, _ := snowflake.NewNode(1)
+	return node.Generate().String()
 }

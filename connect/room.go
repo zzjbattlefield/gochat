@@ -58,6 +58,8 @@ func (r *Room) Push(msg *proto.Message) {
 
 // 将ch加到双链表中
 func (r *Room) Put(ch *Channel) (err error) {
+	r.rlock.Lock()
+	defer r.rlock.Unlock()
 	if r.next != nil {
 		r.next.prev = ch
 	}

@@ -33,7 +33,8 @@ func (c *Connect) Run() {
 			routinueAmount: connectConfig.ConnectBucket.RoutineAmount,
 		})
 	}
-	DefaultService = NewService(Buckets, ServiceOption{
+	operator := new(DefaultOperator)
+	DefaultService = NewService(Buckets, operator, ServiceOption{
 		WriteWait:       10 * time.Second,
 		PongWait:        60 * time.Second,
 		PingPeriod:      54 * time.Second,

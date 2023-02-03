@@ -9,6 +9,7 @@ require (
 	github.com/akutz/memconn v0.1.0 // indirect
 	github.com/alitto/pond v1.8.2 // indirect
 	github.com/apache/thrift v0.17.0 // indirect
+	github.com/bwmarrin/snowflake v0.3.0 // indirect
 	github.com/cenk/backoff v2.2.1+incompatible // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect

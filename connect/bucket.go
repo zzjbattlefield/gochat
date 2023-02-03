@@ -2,6 +2,7 @@ package connect
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"github.com/zzjbattlefield/IM_GO/proto"
 )
@@ -12,7 +13,7 @@ type Bucket struct {
 	chs        map[int]*Channel
 	option     BucketOption
 	routines   []chan *proto.PushRoomMessageReqeust //发送群组消息的channel 接收到消息后直接丢进redis里
-	routineNum int64
+	routineNum uint64
 	broadcast  chan []byte
 }
 
@@ -100,4 +101,10 @@ func (bucket *Bucket) Put(userID int, roomID int, ch *Channel) (err error) {
 		room.Put(ch)
 	}
 	return
+}
+
+// 广播整个房间
+func (bucket *Bucket) BroadcastRoom(req *proto.PushRoomMessageReqeust) {
+	num := atomic.AddUint64(&bucket.routineNum, 1) % bucket.option.routinueAmount
+	bucket.routines[num] <- req
 }

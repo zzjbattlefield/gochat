@@ -19,6 +19,7 @@ const (
 	FailReplyCode         = 1
 	SuccessReplyCode      = 0
 	RedisBaseValidTime    = 86400
+	QueueName             = "chat_queue"
 	RedisPrefix           = "chat_"
 	RedisRoomPrefix       = "chat_room_"
 	RedisRoomOnlinePrefix = "chat_room_online_count_"
@@ -29,9 +30,10 @@ const (
 )
 
 type Config struct {
-	Common    Common
-	Connect   ConnectConfig
-	ApiConfig ApiConfig
+	Common     Common
+	Connect    ConnectConfig
+	ApiConfig  ApiConfig
+	TaskConfig TaskConfig
 }
 
 type ConnectConfig struct {
@@ -72,10 +74,10 @@ type ApiBase struct {
 type Common struct {
 	CommonMysql CommonMysql `mapstructure:"common-mysql"`
 	CommonRedis CommonRedis `mapstructure:"common-redis"`
-	CommentEtcd CommentEtcd `mapstructure:"common-etcd"`
+	CommonEtcd  CommonEtcd  `mapstructure:"common-etcd"`
 }
 
-type CommentEtcd struct {
+type CommonEtcd struct {
 	Host              string `mapstructure:"host"`
 	BasePath          string `mapstructure:"basePath"`
 	ServerPathLogic   string `mapstructure:"serverPathLogic"`
@@ -96,6 +98,18 @@ type CommonRedis struct {
 	RedisAddress  string `mapstructure:"redisAddress"`
 	RedisPassword string `mapstructure:"redisPassword"`
 	Db            int    `mapstructure:"db"`
+}
+
+type TaskConfig struct {
+	TaskBase TaskBase `mapstructure:"task-base"`
+}
+
+type TaskBase struct {
+	RedisAddress  string `mapstructure:"redisAddress"`
+	RedisPassword string `mapstructure:"redisPassword"`
+	RpcAddress    string `mapstructure:"rpcAddress"`
+	PushChan      int    `mapstructure:"pushChan"`
+	PushChanSize  int    `mapstructure:"pushChanSize"`
 }
 
 // 获取config的文件夹路径
@@ -145,9 +159,15 @@ func Init() {
 		if err != nil {
 			panic(err)
 		}
+		viper.SetConfigName("/task")
+		err = viper.MergeInConfig()
+		if err != nil {
+			panic(err)
+		}
 		Conf = new(Config)
 		viper.Unmarshal(&Conf.Common)
 		viper.Unmarshal(&Conf.ApiConfig)
 		viper.Unmarshal(&Conf.Connect)
+		viper.Unmarshal(&Conf.TaskConfig)
 	})
 }

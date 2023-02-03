@@ -63,3 +63,19 @@ func (rpc *RpcLogic) CheckAuth(request *proto.CheckAuthRequest) (code int, userN
 	config.Zap.Infoln("userID:", userID, " userName:", userName)
 	return
 }
+
+func (rpc *RpcLogic) GetRoomInfo(request *proto.Send) (code int, msg string) {
+	var reply = &proto.SuccessReply{}
+	LogicRpcClient.Call(context.Background(), "GetRoomInfo", request, reply)
+	code = reply.Code
+	msg = reply.Msg
+	return
+}
+
+func (rpc *RpcLogic) PushRoom(request *proto.Send) (code int, msg string) {
+	reply := &proto.SuccessReply{}
+	LogicRpcClient.Call(context.Background(), "PushRoom", request, reply)
+	code = reply.Code
+	msg = reply.Msg
+	return
+}

@@ -20,7 +20,7 @@ import (
 var LogicRpcClient client.XClient
 var once sync.Once
 
-type ConnectRpc struct {
+type RpcConnect struct {
 }
 
 func (c *Connect) InitLogicRpcClient() (err error) {
@@ -37,7 +37,7 @@ func (c *Connect) InitLogicRpcClient() (err error) {
 	return nil
 }
 
-func (c *ConnectRpc) Connect(connReq *proto.ConnectRequest) (userID int, err error) {
+func (c *RpcConnect) Connect(connReq *proto.ConnectRequest) (userID int, err error) {
 	reply := &proto.ConnectReply{}
 	if err = LogicRpcClient.Call(context.Background(), "Connect", connReq, reply); err != nil {
 		config.Zap.Errorln("fail to call Connect:", err)
@@ -47,38 +47,67 @@ func (c *ConnectRpc) Connect(connReq *proto.ConnectRequest) (userID int, err err
 	return
 }
 
-func (c *ConnectRpc) DisConnect(req *proto.DisConnectRequest) error {
+func (c *RpcConnect) DisConnect(req *proto.DisConnectRequest) error {
 	reply := &proto.DisConnectReply{}
 	return LogicRpcClient.Call(context.Background(), "DisConnect", req, reply)
 }
 
 func (c *Connect) initConnectWebsocketServer() (err error) {
-	var network, address string
-	connConfig := config.Conf.Connect
-	connectRpcAddress := strings.Split(connConfig.ConnectRpcAddressWebSocket.Address, ",")
+	var network, addr string
+	connectRpcAddress := strings.Split(config.Conf.Connect.ConnectRpcAddressWebSocket.Address, ",")
 	for _, bind := range connectRpcAddress {
-		network, address, err = tools.ParseNetwork(bind)
-		if err != nil {
-			config.Zap.Errorf("初始化connect rpcx server错误 %s", err.Error())
-			return
+		if network, addr, err = tools.ParseNetwork(bind); err != nil {
+			config.Zap.Panicf("InitConnectWebsocketRpcServer ParseNetwork error : %s", err)
 		}
-		go func(network, address string) {
-			s := server.NewServer()
-			addRegistryPlugin(s, network, address)
-			s.RegisterName(config.Conf.Common.CommentEtcd.ServerPathConnect, new(ConnectRpc), fmt.Sprintf("serviceID=%s&serviceType=ws", c.ServiceID))
-			s.Serve(network, address)
-		}(network, address)
+		config.Zap.Infof("Connect start run at-->%s:%s", network, addr)
+		go c.createConnectWebsocktsRpcServer(network, addr)
 	}
 	return
 }
+
+func (c *Connect) createConnectWebsocktsRpcServer(network string, addr string) {
+	s := server.NewServer()
+	addRegistryPlugin(s, network, addr)
+	config.Zap.Infoln("network & addr :", network, " , ", addr)
+	config.Zap.Infof("ServerPathConnect:%+v", config.Conf.Common.CommonEtcd.ServerPathConnect)
+	s.RegisterName(config.Conf.Common.CommonEtcd.ServerPathConnect, new(RpcConnectPush), fmt.Sprintf("serverId=%s&serverType=ws", c.ServiceID))
+	s.RegisterOnShutdown(func(s *server.Server) {
+		s.UnregisterAll()
+	})
+	s.Serve(network, addr)
+}
+
+type RpcConnectPush struct {
+}
+
+func (rpc *RpcConnectPush) PushRoomInfo(ctx context.Context, pushRoomMsg *proto.PushRoomMessageReqeust, successReply *proto.SuccessReply) (err error) {
+	successReply.Code = config.SuccessReplyCode
+	successReply.Msg = "success"
+	config.Zap.Infof("pushRoomMsg msg:%+v", pushRoomMsg)
+	for _, bucket := range DefaultService.Buckets {
+		bucket.BroadcastRoom(pushRoomMsg)
+	}
+	return
+}
+
+func (rpc *RpcConnectPush) PushRoomMsg(ctx context.Context, msg *proto.PushRoomMessageReqeust, reply *proto.SuccessReply) (err error) {
+	reply.Code = config.SuccessReplyCode
+	reply.Msg = "success"
+	for _, bucket := range DefaultService.Buckets {
+		bucket.BroadcastRoom(msg)
+	}
+	return
+}
+
 func addRegistryPlugin(s *server.Server, network, address string) {
 	r := &serverplugin.EtcdV3RegisterPlugin{
 		ServiceAddress: network + "@" + address,
-		EtcdServers:    []string{config.Conf.Common.CommentEtcd.Host},
-		BasePath:       config.Conf.Common.CommentEtcd.BasePath,
+		EtcdServers:    []string{config.Conf.Common.CommonEtcd.Host},
+		BasePath:       config.Conf.Common.CommonEtcd.BasePath,
 		Metrics:        metrics.NewRegistry(),
 		UpdateInterval: time.Minute,
 	}
+	config.Zap.Infof("etcdConfig:%+v", r)
 	err := r.Start()
 	if err != nil {
 		log.Fatal(err)

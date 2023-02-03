@@ -51,7 +51,12 @@ func (s *Service) writePump(ch *Channel, c *Connect) {
 	}()
 	for {
 		select {
-		case message := <-ch.broadcast:
+		case message, ok := <-ch.broadcast:
+			if !ok {
+				config.Zap.Warnln("channel接收消息不ok")
+				ch.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
 			err := ch.conn.SetWriteDeadline(time.Now().Add(s.Option.WriteWait))
 			if err != nil {
 				config.Zap.Errorln("设置websocket writeDeadline失败:", err.Error())
@@ -62,15 +67,16 @@ func (s *Service) writePump(ch *Channel, c *Connect) {
 			if err != nil {
 				config.Zap.Errorln("创建nextWrite失败")
 			}
-			_, err = w.Write(message.Body)
-			if err != nil {
-				w.Close()
+			config.Zap.Infof("准备发送消息:%+v", string(message.Body))
+			w.Write(message.Body)
+			if err := w.Close(); err != nil {
+				return
 			}
 		case <-ticker.C:
 			//ping一下客户端
 			err := ch.conn.SetWriteDeadline(time.Now().Add(s.Option.WriteWait))
+			config.Zap.Infof("websocket.Ping:%+v", websocket.PingMessage)
 			if err != nil {
-				config.Zap.Errorln("设置websocket writeDeadline失败:", err.Error())
 				ch.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
@@ -93,10 +99,11 @@ func (s *Service) readPump(ch *Channel, c *Connect) {
 		disConnectReq.RoomID = ch.Room.ID
 		disConnectReq.UserID = ch.UserID
 		s.Bucket(ch.UserID).DeleteChannel(ch)
-		if err := s.DisConnect(disConnectReq); err != nil {
+		if err := s.operator.DisConnect(disConnectReq); err != nil {
 			config.Zap.Errorf("disConnect error :%v", err)
 		}
 		ch.conn.Close()
+		config.Zap.Infoln("disConnect success")
 	}()
 	for {
 		_, message, err := ch.conn.ReadMessage()
@@ -117,9 +124,13 @@ func (s *Service) readPump(ch *Channel, c *Connect) {
 			config.Zap.Errorln("readPump message no authToken")
 		}
 		connRequest.ServiceID = c.ServiceID
-		userID, err := s.Connect(connRequest)
+		userID, err := s.operator.Connect(connRequest)
 		if err != nil {
 			config.Zap.Errorf("ws read connect err:%v", err)
+		}
+		if userID == 0 {
+			ch.conn.Close()
+			config.Zap.Errorln("ws connect got userID = 0")
 		}
 		//把用户id放到bucket里
 		bucket := s.Bucket(userID)
