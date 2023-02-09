@@ -16,7 +16,7 @@ func (task *Task) InitQueueRedisClient() (err error) {
 	redisOpt := tools.RedisOpt{
 		Address:  taskConf.RedisAddress,
 		Password: taskConf.RedisPassword,
-		DB:       0,
+		DB:       1,
 	}
 	RedisClient = tools.GetRedisInstance(&redisOpt)
 	if pong, err := RedisClient.Ping(context.Background()).Result(); err != nil {

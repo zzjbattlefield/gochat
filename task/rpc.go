@@ -59,6 +59,7 @@ func (task *Task) InitConnectRpcClient() (err error) {
 		config.Zap.Panicf("no etcd service find")
 	}
 	for _, connConf := range d.GetServices() {
+		config.Zap.Infof("key is %+v , value is %+v", connConf.Key, connConf.Value)
 		serviceID := getParamByKey(connConf.Value, "serverId")
 		serviceType := getParamByKey(connConf.Value, "serverType")
 		config.Zap.Infof("serviceID is %v , serviceType is %v", serviceID, serviceType)
@@ -81,7 +82,64 @@ func (task *Task) InitConnectRpcClient() (err error) {
 		Rclient.ServiceInsMap[serviceID] = append(Rclient.ServiceInsMap[serviceID], ins)
 	}
 	//TODO: watchServerChange
+	go task.watchServerChange(d)
 	return
+}
+
+func (task *Task) PushSingleToConnect(serverId string, userId int, msg []byte) {
+	config.Zap.Infof("PushSingleToConnect Body %s", string(msg))
+	pushMsgReq := &proto.PushRedisMessageRequest{
+		UserId: userId,
+		Msg: proto.Message{
+			Body:      msg,
+			Operation: config.OpSingleSend,
+			SeqID:     tools.GetSnowFlakeId(),
+		},
+	}
+	reply := &proto.SuccessReply{}
+	client, err := Rclient.GetRpcClientByServiceID(serverId)
+	if err != nil {
+		config.Zap.Errorf("GetRpcClientByServiceID error:%v", err.Error())
+	}
+	if err = client.Call(context.Background(), "PushSingleMsg", pushMsgReq, reply); err != nil {
+		config.Zap.Errorf("调用PushSingleMsg error:%v", err.Error())
+	}
+	config.Zap.Infof("reply : %v", reply.Msg)
+}
+
+func (task *Task) watchServerChange(d client.ServiceDiscovery) {
+	etcdConfig := config.Conf.Common.CommonEtcd
+	for kvChan := range d.WatchService() {
+		insMap := make(map[string][]*ClientInstance)
+		if len(kvChan) <= 0 {
+			config.Zap.Errorf("检测到connect变更但是没有可用的ip")
+		}
+		config.Zap.Infoln("connect变更触发....")
+		for _, kv := range kvChan {
+			config.Zap.Infof("connect 变更 key:%+v, value:%+v", kv.Key, kv.Value)
+			serverId := getParamByKey(kv.Value, "serverId")
+			serverType := getParamByKey(kv.Value, "serverType")
+			config.Zap.Infof("connect 变更 serverId:%+v , serverType:%+v", serverId, serverType)
+			d, err := client.NewPeer2PeerDiscovery(kv.Key, "")
+			if err != nil {
+				config.Zap.Errorf("watchServerChange NewPeer2PeerDiscovery error:%v", err.Error())
+			}
+			c := client.NewXClient(etcdConfig.ServerPathConnect, client.Failtry, client.RandomSelect, d, client.DefaultOption)
+			Instance := &ClientInstance{
+				ServiceType: serverType,
+				ServiceID:   serverId,
+				Client:      c,
+			}
+			if _, ok := insMap[serverId]; !ok {
+				insMap[serverId] = []*ClientInstance{Instance}
+			} else {
+				insMap[serverId] = append(insMap[serverId], Instance)
+			}
+		}
+		Rclient.lock.Lock()
+		Rclient.ServiceInsMap = insMap
+		Rclient.lock.Unlock()
+	}
 }
 
 func getParamByKey(s string, key string) string {

@@ -79,3 +79,15 @@ func (rpc *RpcLogic) PushRoom(request *proto.Send) (code int, msg string) {
 	msg = reply.Msg
 	return
 }
+
+func (rpc *RpcLogic) GetUserInfoByUserId(request *proto.GetUserInfoRequest) (code int, userName string) {
+	reply := &proto.GetUserInfoResponse{}
+	LogicRpcClient.Call(context.Background(), "GetUserInfoByUserId", request, reply)
+	return reply.Code, reply.UserName
+}
+
+func (rpc *RpcLogic) Push(request *proto.Send) (code int, message string) {
+	reply := &proto.SuccessReply{}
+	LogicRpcClient.Call(context.Background(), "Push", request, reply)
+	return reply.Code, reply.Msg
+}

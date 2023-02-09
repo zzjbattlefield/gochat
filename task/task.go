@@ -15,4 +15,5 @@ func (task *Task) Run() {
 	if err := task.InitConnectRpcClient(); err != nil {
 		config.Zap.Panicf("InitConnectRpcClient Error:%v", err.Error())
 	}
+	go task.GoPush()
 }

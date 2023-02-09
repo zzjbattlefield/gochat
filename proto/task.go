@@ -16,3 +16,8 @@ type RedisRoomUserInfo struct {
 	Count        int
 	Op           int
 }
+
+type PushRedisMessageRequest struct {
+	UserId int
+	Msg    Message
+}

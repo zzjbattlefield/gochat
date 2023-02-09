@@ -81,3 +81,24 @@ func (logic *Logic) RedisPublishRoomMessage(roomID int, count int, userList map[
 	}
 	return
 }
+
+func (logic *Logic) RedisPublishChannel(serviceId string, toUserId int, msg []byte) (err error) {
+	var msgByte []byte
+	redisMsg := proto.RedisMsg{
+		Op:        config.OpSingleSend,
+		ServiceID: serviceId,
+		Msg:       msg,
+		UserID:    toUserId,
+	}
+	msgByte, err = json.Marshal(redisMsg)
+	if err != nil {
+		config.Zap.Errorf("json.Marshal 错误:%v", err)
+		return
+	}
+	redisChannel := config.QueueName
+	if err = RedisClient.LPush(context.Background(), redisChannel, msgByte).Err(); err != nil {
+		config.Zap.Errorf("redis LPush 错误:%v", err.Error())
+		return
+	}
+	return
+}

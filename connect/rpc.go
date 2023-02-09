@@ -2,6 +2,7 @@ package connect
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -87,6 +88,20 @@ func (rpc *RpcConnectPush) PushRoomInfo(ctx context.Context, pushRoomMsg *proto.
 	for _, bucket := range DefaultService.Buckets {
 		bucket.BroadcastRoom(pushRoomMsg)
 	}
+	return
+}
+
+func (rpc *RpcConnectPush) PushSingleMsg(ctx context.Context, args *proto.PushRedisMessageRequest, reply *proto.SuccessReply) (err error) {
+	reply.Code = config.FailReplyCode
+	bucket := DefaultService.Bucket(args.UserId)
+	userChannel, ok := bucket.chs[args.UserId]
+	if !ok {
+		err = errors.New("没有在bucket中找到对于的用户channel struct")
+		return
+	}
+	userChannel.broadcast <- &args.Msg
+	reply.Code = config.SuccessReplyCode
+	reply.Msg = "ok"
 	return
 }
 

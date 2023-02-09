@@ -38,6 +38,7 @@ func initPushRouter(r *gin.Engine) {
 	{
 		pushGroup.POST("/getRoomInfo", handler.GetRoomInfo)
 		pushGroup.POST("/pushRoom", handler.PushRoom)
+		pushGroup.POST("/push", handler.Push)
 	}
 }
 

@@ -203,3 +203,35 @@ func (rpc *LogicRpc) PushRoom(ctx context.Context, args *proto.Send, reply *prot
 	reply.Code = tools.CodeSuccess
 	return
 }
+
+func (rpc *LogicRpc) GetUserInfoByUserId(ctx context.Context, args *proto.GetUserInfoRequest, reply *proto.GetUserInfoResponse) (err error) {
+	userId := args.UserId
+	reply.Code = config.FailReplyCode
+	userModel := new(model.UserModel)
+	if err = userModel.GetUserInfoByUserId(userId); err != nil {
+		config.Zap.Errorf("获取用户信息失败:%v", err.Error())
+		return
+	}
+	reply.Code = config.SuccessReplyCode
+	reply.UserId = userModel.ID
+	reply.UserName = userModel.UserName
+	return
+}
+
+func (rpc *LogicRpc) Push(ctx context.Context, args *proto.Send, reply *proto.SuccessReply) (err error) {
+	reply.Code = config.FailReplyCode
+	var bodyByte []byte
+	bodyByte, err = json.Marshal(args)
+	if err != nil {
+		config.Zap.Errorf("json.Marshal 错误:%v", err)
+		return
+	}
+	logic := new(Logic)
+	userKey := logic.GetUserKey(strconv.Itoa(args.ToUserId))
+	serviceId := RedisClient.Get(ctx, userKey).Val()
+	err = logic.RedisPublishChannel(serviceId, args.ToUserId, bodyByte)
+	if err == nil {
+		reply.Code = config.SuccessReplyCode
+	}
+	return
+}

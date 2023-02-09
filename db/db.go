@@ -17,7 +17,7 @@ func init() {
 func InitDB(DBName string) {
 	var err error
 	mysqlConfig := config.Conf.Common.CommonMysql
-	dsn := mysqlConfig.User + ":" + mysqlConfig.Password + "@tcp(" + mysqlConfig.Address + ":" + strconv.Itoa(mysqlConfig.Port) + ")/" + DBName
+	dsn := mysqlConfig.User + ":" + mysqlConfig.Password + "@tcp(" + mysqlConfig.Address + ":" + strconv.Itoa(mysqlConfig.Port) + ")/" + DBName + "?parseTime=True&loc=Local"
 	DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		panic(err)

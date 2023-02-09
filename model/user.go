@@ -32,3 +32,8 @@ func (user *UserModel) Add() (userID int, err error) {
 	}
 	return user.ID, nil
 }
+
+func (user *UserModel) GetUserInfoByUserId(userID int) (err error) {
+	result := db.DB.Table("user").Where("id = ?", userID).First(user)
+	return result.Error
+}
