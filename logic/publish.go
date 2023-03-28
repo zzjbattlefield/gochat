@@ -31,7 +31,7 @@ func (logic *Logic) GetRoomUserKey(RoomID string) string {
 
 func (logic *Logic) GetUserKey(UserID string) string {
 	var returnKey bytes.Buffer
-	returnKey.WriteString(config.RedisRoomPrefix)
+	returnKey.WriteString(config.RedisUserfix)
 	returnKey.WriteString(UserID)
 	return returnKey.String()
 }

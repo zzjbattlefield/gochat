@@ -21,6 +21,7 @@ const (
 	RedisBaseValidTime    = 86400
 	QueueName             = "chat_queue"
 	RedisPrefix           = "chat_"
+	RedisUserfix          = "chat_user_"
 	RedisRoomPrefix       = "chat_room_"
 	RedisRoomOnlinePrefix = "chat_room_online_count_"
 	OpSingleSend          = 2 // single user
