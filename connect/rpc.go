@@ -129,3 +129,28 @@ func addRegistryPlugin(s *server.Server, network, address string) {
 	}
 	s.Plugins.Add(r)
 }
+
+func (rpc *Connect) InitConnectTcpRpcServer() (err error) {
+	var network, addr string
+	connectArress := strings.Split(config.Conf.Connect.ConnectRpcAddressTcp.Address, ",")
+	for _, bind := range connectArress {
+		if network, addr, err = tools.ParseNetwork(bind); err != nil {
+			config.Zap.Panicf("InitConnectTcpRpcServer ParseNetwork error:%s", err)
+		}
+		config.Zap.Infof("connect start run at %s:%s", network, addr)
+		go rpc.createConnectTcpRpcServer(network, addr)
+	}
+	return
+}
+
+func (c *Connect) createConnectTcpRpcServer(network string, addr string) {
+	s := server.NewServer()
+	addRegistryPlugin(s, network, addr)
+	config.Zap.Infoln("network & addr :", network, " , ", addr)
+	config.Zap.Infof("ServerPathConnect:%+v", config.Conf.Common.CommonEtcd.ServerPathConnect)
+	s.RegisterName(config.Conf.Common.CommonEtcd.ServerPathConnect, new(RpcConnectPush), fmt.Sprintf("serverId=%s&serverType=tcp", c.ServiceID))
+	s.RegisterOnShutdown(func(s *server.Server) {
+		s.UnregisterAll()
+	})
+	s.Serve(network, addr)
+}

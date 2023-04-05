@@ -51,3 +51,30 @@ func (c *Connect) Run() {
 		config.Zap.Errorln("initWebsocket error:", err.Error())
 	}
 }
+
+func (c *Connect) RunTcp() {
+	connectConfig := config.Conf.Connect
+	runtime.GOMAXPROCS(connectConfig.ConnectBucket.CpuNum)
+	if err := c.InitLogicRpcClient(); err != nil {
+		config.Zap.Panicf("InitLogicRpcClient err:%s", err.Error())
+	}
+	Buckets := make([]*Bucket, connectConfig.ConnectBucket.CpuNum)
+	for i := 0; i < connectConfig.ConnectBucket.CpuNum; i++ {
+		Buckets[i] = NewBucket(&BucketOption{
+			routinueAmount: connectConfig.ConnectBucket.RoutineAmount,
+		})
+	}
+	operator := new(DefaultOperator)
+	DefaultService = NewService(Buckets, operator, ServiceOption{
+		WriteWait:       10 * time.Second,
+		PongWait:        60 * time.Second,
+		PingPeriod:      54 * time.Second,
+		MaxMessageSize:  512,
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		BroadcastSize:   512,
+	})
+	c.ServiceID = fmt.Sprintf("%s-%s", "tcp", uuid.New().String())
+	c.InitConnectTcpRpcServer()
+	c.initTcpServer()
+}

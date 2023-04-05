@@ -28,6 +28,7 @@ const (
 	OpRoomSend            = 3 // send to room
 	OpRoomCountSend       = 4 // get online user count
 	OpRoomInfoSend        = 5 // send info to room
+	OpBulidTcpConn        = 6
 )
 
 type Config struct {
@@ -42,9 +43,28 @@ type ConnectConfig struct {
 	ConnectBucket              ConnectBucket              `mapstructure:"connect-bucket"`
 	ConnectWebSocket           ConnectWebSocket           `mapstructure:"connect-websocket"`
 	ConnectRpcAddressWebSocket ConnectRpcAddressWebSocket `mapstructure:"connect-rpcAddress-websocket"`
+	ConnectTcp                 ConnectTcp                 `mapstructure:"connect-tcp"`
+	ConnectRpcAddressTcp       ConnectRpcAddressTcp       `mapstructure:"connect-rpcAddress-tcp"`
 }
 
+type ConnectTcp struct {
+	ServerId      string `mapstructure:"serverId"`
+	Bind          string `mapstructure:"bind"`
+	SendBuf       int    `mapstructure:"sendbuf"`
+	ReceiveBuf    int    `mapstructure:"receivebuf"`
+	KeepAlive     bool   `mapstructure:"keepalive"`
+	Reader        int    `mapstructure:"reader"`
+	ReadBuf       int    `mapstructure:"readBuf"`
+	ReadBufSize   int    `mapstructure:"readBufSize"`
+	Writer        int    `mapstructure:"writer"`
+	WriterBuf     int    `mapstructure:"writerBuf"`
+	WriterBufSize int    `mapstructure:"writeBufSize"`
+}
 type ConnectRpcAddressWebSocket struct {
+	Address string `mapstructure:"address"`
+}
+
+type ConnectRpcAddressTcp struct {
 	Address string `mapstructure:"address"`
 }
 

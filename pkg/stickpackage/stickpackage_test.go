@@ -4,9 +4,14 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"log"
+	"net"
 	"testing"
 	"time"
+
+	"github.com/zzjbattlefield/IM_GO/config"
+	"github.com/zzjbattlefield/IM_GO/proto"
 )
 
 func Test_TestStick(t *testing.T) {
@@ -44,4 +49,72 @@ func Test_TestStick(t *testing.T) {
 		log.Fatal("invalid data")
 		t.Fail()
 	}
+}
+
+func Test_TcpClient(t *testing.T) {
+	var (
+		tcpClient net.Conn
+		err       error
+	)
+	roomId := 1
+	fromUserID := 5
+	authToken := "UN_kcQQBv7MRZI9GYfD5OA4FxCXZ058xw6BvU3TqTZY="
+	tcpAddrRemote, _ := net.ResolveTCPAddr("tcp4", "127.0.0.1:7001")
+	tcpClient, err = net.DialTCP("tcp", nil, tcpAddrRemote)
+	defer func() {
+		_ = tcpClient.Close()
+	}()
+	if err != nil {
+		panic("conn err:" + err.Error())
+	}
+	//读取服务端广播的信息
+	go func() {
+		scanner := bufio.NewScanner(tcpClient)
+		scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+			if !atEOF && data[0] == 'v' && len(data) > 4 {
+				packSumLength := int16(0)
+				binary.Read(bytes.NewReader(data[2:4]), binary.BigEndian, &packSumLength)
+				if int(packSumLength) <= len(data) {
+					return int(packSumLength), data[:packSumLength], nil
+				}
+			}
+			return
+		})
+		for {
+			log.Println("start read tcp msg from conn...")
+			failTime := 0
+			failTime++
+			if failTime >= 3 {
+				log.Println("fail to many time")
+				break
+			}
+			for scanner.Scan() {
+				log.Println("read tcp msg from conn ok")
+				scannerPackage := &Stickpackage{}
+				if err := scannerPackage.Unpack(bytes.NewReader(scanner.Bytes())); err != nil {
+					log.Printf("packer unpack err:%s", err.Error())
+					break
+				}
+				log.Printf("read msg from tcp ok version:%s length:%d msg:%s", scannerPackage.Version, scannerPackage.Length, scannerPackage.Msg)
+			}
+			if scanner.Err() != nil {
+				log.Printf("scanner err:%s", err.Error())
+				break
+			}
+		}
+	}()
+	tcpReq := &proto.SendTcp{
+		Op:         config.OpBulidTcpConn,
+		RoomId:     roomId,
+		FromUserId: fromUserID,
+		AuthToken:  authToken,
+	}
+	tcpReqBytes, _ := json.Marshal(tcpReq)
+	tcpPack := &Stickpackage{
+		Version: VersionContent,
+		Msg:     tcpReqBytes,
+	}
+	tcpPack.Length = tcpPack.GetPackageLength()
+	tcpPack.Pack(tcpClient)
+	time.Sleep(time.Minute * 30)
 }

@@ -3,3 +3,4 @@ go.work*
 .vscode
 config/dev/
 default.etcd/*
+.DS_Store

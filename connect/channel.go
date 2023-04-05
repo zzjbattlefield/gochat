@@ -1,6 +1,8 @@
 package connect
 
 import (
+	"net"
+
 	"github.com/gorilla/websocket"
 	"github.com/zzjbattlefield/IM_GO/proto"
 )
@@ -10,6 +12,7 @@ type Channel struct {
 	Room      *Room
 	broadcast chan *proto.Message
 	conn      *websocket.Conn
+	connTcp   *net.TCPConn
 	next      *Channel
 	prev      *Channel
 }

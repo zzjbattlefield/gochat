@@ -25,6 +25,8 @@ func main() {
 		logic.New().Run()
 	case "connect":
 		connect.New().Run()
+	case "connect_tcp":
+		connect.New().RunTcp()
 	case "task":
 		task.New().Run()
 	default:
