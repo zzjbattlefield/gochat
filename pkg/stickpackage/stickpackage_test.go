@@ -80,9 +80,9 @@ func Test_TcpClient(t *testing.T) {
 			}
 			return
 		})
+		failTime := 0
 		for {
 			log.Println("start read tcp msg from conn...")
-			failTime := 0
 			failTime++
 			if failTime >= 3 {
 				log.Println("fail to many time")
@@ -98,7 +98,7 @@ func Test_TcpClient(t *testing.T) {
 				log.Printf("read msg from tcp ok version:%s length:%d msg:%s", scannerPackage.Version, scannerPackage.Length, scannerPackage.Msg)
 			}
 			if scanner.Err() != nil {
-				log.Printf("scanner err:%s", err.Error())
+				log.Printf("scanner err:%s", scanner.Err().Error())
 				break
 			}
 		}
@@ -116,5 +116,27 @@ func Test_TcpClient(t *testing.T) {
 	}
 	tcpPack.Length = tcpPack.GetPackageLength()
 	tcpPack.Pack(tcpClient)
+	go func() {
+		for {
+			time.Sleep(5 * time.Second)
+			messageBody := "now time:" + time.Now().Format("2006-01-02 15:04:05")
+			tcpRep := &proto.SendTcp{
+				Op:         config.OpRoomSend,
+				Msg:        messageBody,
+				RoomId:     roomId,
+				FromUserId: fromUserID,
+				AuthToken:  authToken,
+			}
+			reqJson, _ := json.Marshal(tcpRep)
+			pack := &Stickpackage{
+				Version: VersionContent,
+				Msg:     reqJson,
+			}
+			pack.Length = pack.GetPackageLength()
+			pack.Pack(tcpClient)
+			log.Printf("send msg to tcp ok")
+		}
+	}()
+
 	time.Sleep(time.Minute * 30)
 }

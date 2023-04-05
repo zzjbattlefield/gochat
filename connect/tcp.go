@@ -10,10 +10,15 @@ import (
 	"time"
 
 	"github.com/smallnest/rpcx/log"
+	apirpc "github.com/zzjbattlefield/IM_GO/api/rpc"
 	"github.com/zzjbattlefield/IM_GO/config"
 	"github.com/zzjbattlefield/IM_GO/pkg/stickpackage"
 	"github.com/zzjbattlefield/IM_GO/proto"
 )
+
+func init() {
+	apirpc.InitLogicRpcClient()
+}
 
 func (c *Connect) initTcpServer() (err error) {
 	var (
@@ -145,14 +150,19 @@ func (c *Connect) readDataFromTcp(s *Service, ch *Channel) {
 				config.Zap.Errorf("bucket put user error:%s", err.Error())
 				return
 			}
-			// case config.OpRoomSend:
-			// req := &proto.Send{
-			// 	Msg:          rawTcpMsg.Msg,
-			// 	RoomId:       rawTcpMsg.RoomId,
-			// 	FromUserId:   ch.UserID,
-			// 	FromUserName: rawTcpMsg.FromUserName,
-			// }
-			// RpcConnectPush
+		case config.OpRoomSend:
+			req := &proto.Send{
+				Msg:          rawTcpMsg.Msg,
+				RoomId:       rawTcpMsg.RoomId,
+				FromUserId:   ch.UserID,
+				FromUserName: rawTcpMsg.FromUserName,
+			}
+			code, msg := apirpc.RpcLoginObj.PushRoom(req)
+			config.Zap.Info("tcp conn push msg to room", code, msg)
+		}
+		if scanner.Err() != nil {
+			config.Zap.Errorf("scanner err:%s", scanner.Err().Error())
+			return
 		}
 	}
 }
@@ -162,7 +172,6 @@ func (c *Connect) writeDataToTcp(s *Service, ch *Channel) {
 	defer func() {
 		ticker.Stop()
 		ch.connTcp.Close()
-		return
 	}()
 	pack := &stickpackage.Stickpackage{
 		Version: stickpackage.VersionContent,
