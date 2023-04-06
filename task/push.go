@@ -10,7 +10,7 @@ import (
 
 type PushParams struct {
 	UserId    int
-	ServiceId string
+	ServiceId []string
 	Msg       []byte
 }
 
@@ -47,7 +47,7 @@ func (task *Task) Push(msg string) {
 		task.broadcastRoomMsgToConnect(redisMsg.RoomID, redisMsg.Msg)
 	case config.OpSingleSend:
 		pushChannel[rand.Int()%100] <- &PushParams{
-			ServiceId: redisMsg.ServiceID,
+			ServiceId: redisMsg.ServiceIDs,
 			UserId:    redisMsg.UserID,
 			Msg:       redisMsg.Msg,
 		}

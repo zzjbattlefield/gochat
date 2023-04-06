@@ -3,11 +3,15 @@ package connect
 import (
 	"net"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/zzjbattlefield/IM_GO/proto"
 )
 
+type ChannelClients map[string]*Channel
+
 type Channel struct {
+	UUID      string
 	UserID    int
 	Room      *Room
 	broadcast chan *proto.Message
@@ -17,8 +21,13 @@ type Channel struct {
 	prev      *Channel
 }
 
+func NewChannelClients() ChannelClients {
+	return make(map[string]*Channel, 0)
+}
+
 func NewChannel(size int) *Channel {
 	return &Channel{
+		UUID:      uuid.New().String(),
 		broadcast: make(chan *proto.Message, size),
 		next:      nil,
 		prev:      nil,

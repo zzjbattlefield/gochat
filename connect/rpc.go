@@ -99,7 +99,10 @@ func (rpc *RpcConnectPush) PushSingleMsg(ctx context.Context, args *proto.PushRe
 		err = errors.New("没有在bucket中找到对于的用户channel struct")
 		return
 	}
-	userChannel.broadcast <- &args.Msg
+	//私聊要给对方用户的所有客户端都推送消息
+	for _, ch := range userChannel {
+		ch.broadcast <- &args.Msg
+	}
 	reply.Code = config.SuccessReplyCode
 	reply.Msg = "ok"
 	return

@@ -86,7 +86,7 @@ func (task *Task) InitConnectRpcClient() (err error) {
 	return
 }
 
-func (task *Task) PushSingleToConnect(serverId string, userId int, msg []byte) {
+func (task *Task) PushSingleToConnect(serverIds []string, userId int, msg []byte) {
 	config.Zap.Infof("PushSingleToConnect Body %s", string(msg))
 	pushMsgReq := &proto.PushRedisMessageRequest{
 		UserId: userId,
@@ -97,14 +97,17 @@ func (task *Task) PushSingleToConnect(serverId string, userId int, msg []byte) {
 		},
 	}
 	reply := &proto.SuccessReply{}
-	client, err := Rclient.GetRpcClientByServiceID(serverId)
-	if err != nil {
-		config.Zap.Errorf("GetRpcClientByServiceID error:%v", err.Error())
+	for _, serverId := range serverIds {
+		client, err := Rclient.GetRpcClientByServiceID(serverId)
+		if err != nil {
+			config.Zap.Errorf("GetRpcClientByServiceID error:%v", err.Error())
+		}
+		if err = client.Call(context.Background(), "PushSingleMsg", pushMsgReq, reply); err != nil {
+			config.Zap.Errorf("调用PushSingleMsg error:%v", err.Error())
+		}
+		config.Zap.Infof("reply : %v", reply.Msg)
 	}
-	if err = client.Call(context.Background(), "PushSingleMsg", pushMsgReq, reply); err != nil {
-		config.Zap.Errorf("调用PushSingleMsg error:%v", err.Error())
-	}
-	config.Zap.Infof("reply : %v", reply.Msg)
+
 }
 
 func (task *Task) watchServerChange(d client.ServiceDiscovery) {
@@ -201,7 +204,7 @@ func (task *Task) broadcastRoomMsgToConnect(roomID int, msg []byte) {
 }
 
 func (rc *RpcConnectClient) GetAllConnectRpcClient() (rpcClientList []client.XClient) {
-	for serviceID, _ := range rc.ServiceInsMap {
+	for serviceID := range rc.ServiceInsMap {
 		client, err := rc.GetRpcClientByServiceID(serviceID)
 		if err != nil {
 			config.Zap.Errorf("get client by serviceID error, service_id=%v,err is %v", serviceID, err.Error())

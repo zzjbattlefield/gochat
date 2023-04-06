@@ -10,7 +10,7 @@ import (
 type Bucket struct {
 	lock       sync.RWMutex
 	rooms      map[int]*Room
-	chs        map[int]*Channel
+	chs        map[int]ChannelClients
 	option     BucketOption
 	routines   []chan *proto.PushRoomMessageReqeust //发送群组消息的channel 接收到消息后直接丢进redis里
 	routineNum uint64
@@ -27,7 +27,7 @@ type BucketOption struct {
 func NewBucket(option *BucketOption) (bucket *Bucket) {
 	bucket = &Bucket{
 		rooms:    make(map[int]*Room),
-		chs:      make(map[int]*Channel, option.ChannelSize),
+		chs:      make(map[int]ChannelClients),
 		option:   *option,
 		routines: make([]chan *proto.PushRoomMessageReqeust, option.routinueAmount),
 	}
@@ -67,9 +67,18 @@ func (bucket *Bucket) DeleteChannel(ch *Channel) {
 	)
 	bucket.lock.RLock()
 	defer bucket.lock.RUnlock()
-	if ch, ok = bucket.chs[ch.UserID]; ok {
-		room = ch.Room
-		delete(bucket.chs, ch.UserID)
+	//先获取这个用户的所有客户端Channel标识
+	userClient, ok := bucket.chs[ch.UserID]
+	if ok {
+		//再判断这个这个客户端是否存在于这个用户的所有客户端中
+		if ch, ok = userClient[ch.UUID]; ok {
+			room = ch.Room
+			delete(userClient, ch.UUID)
+			if len(userClient) == 0 {
+				//如果这个用户的所有客户端都已经断开了 那么就把这个用户从bucket里删掉
+				delete(bucket.chs, ch.UserID)
+			}
+		}
 	}
 	if room != nil && room.DeleteChannel(ch) {
 		//也要把room里的这个channel给删掉
@@ -94,7 +103,11 @@ func (bucket *Bucket) Put(userID int, roomID int, ch *Channel) (err error) {
 		ch.Room = room
 	}
 	ch.UserID = userID
-	bucket.chs[userID] = ch
+	if _, ok = bucket.chs[userID]; !ok {
+		//创建新的客户端hash表
+		bucket.chs[userID] = NewChannelClients()
+	}
+	bucket.chs[userID][ch.UUID] = ch
 	bucket.lock.Unlock()
 
 	if room != nil {

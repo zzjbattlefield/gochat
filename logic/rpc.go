@@ -90,9 +90,11 @@ func (rpc *LogicRpc) Connect(ctx context.Context, request *proto.ConnectRequest,
 	userKey := logic.GetUserKey(userInfo["userID"])
 
 	//绑定当前用户所在的serviceID
-	err = RedisClient.Set(ctx, userKey, request.ServiceID, config.RedisBaseValidTime*time.Second).Err()
+	// err = RedisClient.Set(ctx, userKey, request.ServiceID, config.RedisBaseValidTime*time.Second).Err()
+	//使用redis集合保存用户所在的serviceID
+	err = RedisClient.SAdd(ctx, userKey, request.ServiceID).Err()
 	if err != nil {
-		config.Zap.Errorf("redis Set error: %s", err.Error())
+		config.Zap.Errorf("redis SAdd error: %s", err.Error())
 		return
 	}
 	if RedisClient.HGet(ctx, roomUserkey, userInfo["userID"]).Val() == "" {
@@ -219,8 +221,11 @@ func (rpc *LogicRpc) GetUserInfoByUserId(ctx context.Context, args *proto.GetUse
 }
 
 func (rpc *LogicRpc) Push(ctx context.Context, args *proto.Send, reply *proto.SuccessReply) (err error) {
+	var (
+		bodyByte   []byte
+		serviceIds []string
+	)
 	reply.Code = config.FailReplyCode
-	var bodyByte []byte
 	bodyByte, err = json.Marshal(args)
 	if err != nil {
 		config.Zap.Errorf("json.Marshal 错误:%v", err)
@@ -228,8 +233,11 @@ func (rpc *LogicRpc) Push(ctx context.Context, args *proto.Send, reply *proto.Su
 	}
 	logic := new(Logic)
 	userKey := logic.GetUserKey(strconv.Itoa(args.ToUserId))
-	serviceId := RedisClient.Get(ctx, userKey).Val()
-	err = logic.RedisPublishChannel(serviceId, args.ToUserId, bodyByte)
+	if serviceIds, err = RedisClient.SMembers(ctx, userKey).Result(); err != nil {
+		config.Zap.Errorf("redis获取user下的serverID错误 userKey:%+v, err:%v", userKey, err)
+		return
+	}
+	err = logic.RedisPublishChannel(serviceIds, args.ToUserId, bodyByte)
 	if err == nil {
 		reply.Code = config.SuccessReplyCode
 	}

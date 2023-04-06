@@ -82,13 +82,13 @@ func (logic *Logic) RedisPublishRoomMessage(roomID int, count int, userList map[
 	return
 }
 
-func (logic *Logic) RedisPublishChannel(serviceId string, toUserId int, msg []byte) (err error) {
+func (logic *Logic) RedisPublishChannel(serviceIds []string, toUserId int, msg []byte) (err error) {
 	var msgByte []byte
 	redisMsg := proto.RedisMsg{
-		Op:        config.OpSingleSend,
-		ServiceID: serviceId,
-		Msg:       msg,
-		UserID:    toUserId,
+		Op:         config.OpSingleSend,
+		ServiceIDs: serviceIds,
+		Msg:        msg,
+		UserID:     toUserId,
 	}
 	msgByte, err = json.Marshal(redisMsg)
 	if err != nil {
