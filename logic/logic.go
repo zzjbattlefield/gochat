@@ -1,5 +1,7 @@
 package logic
 
+import "github.com/google/uuid"
+
 type Logic struct {
 	ServiceID string
 }
@@ -13,7 +15,7 @@ func (logic *Logic) Run() {
 	if err != nil {
 		panic(err)
 	}
-	logic.ServiceID = "1"
+	logic.ServiceID = uuid.New().String()
 	if err = logic.InitRpcServer(); err != nil {
 		panic(err)
 	}

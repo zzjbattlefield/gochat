@@ -32,10 +32,19 @@ const (
 )
 
 type Config struct {
-	Common     Common
-	Connect    ConnectConfig
-	ApiConfig  ApiConfig
-	TaskConfig TaskConfig
+	LogicConfig LogicConfig
+	Common      Common
+	Connect     ConnectConfig
+	ApiConfig   ApiConfig
+	TaskConfig  TaskConfig
+}
+
+type LogicConfig struct {
+	LogicBase LogicBase `mapstructure:"logic-base"`
+}
+
+type LogicBase struct {
+	RpcAddress string `mapstructure:"rpcAddress"`
 }
 
 type ConnectConfig struct {
@@ -180,6 +189,11 @@ func Init() {
 		if err != nil {
 			panic(err)
 		}
+		viper.SetConfigName("/logic")
+		err = viper.MergeInConfig()
+		if err != nil {
+			panic(err)
+		}
 		viper.SetConfigName("/task")
 		err = viper.MergeInConfig()
 		if err != nil {
@@ -190,5 +204,6 @@ func Init() {
 		viper.Unmarshal(&Conf.ApiConfig)
 		viper.Unmarshal(&Conf.Connect)
 		viper.Unmarshal(&Conf.TaskConfig)
+		viper.Unmarshal(&Conf.LogicConfig)
 	})
 }

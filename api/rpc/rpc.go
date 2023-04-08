@@ -3,7 +3,10 @@ package rpc
 import (
 	"context"
 	"sync"
+	"time"
 
+	"github.com/rpcxio/libkv/store"
+	etcdV3 "github.com/rpcxio/rpcx-etcd/client"
 	"github.com/smallnest/rpcx/client"
 	"github.com/zzjbattlefield/IM_GO/config"
 	"github.com/zzjbattlefield/IM_GO/proto"
@@ -19,11 +22,27 @@ var RpcLoginObj *RpcLogic
 // 初始化对logicRpc的客户端初始化
 func InitLogicRpcClient() {
 	once.Do(func() {
-		d, err := client.NewPeer2PeerDiscovery("tcp@127.0.0.1:6900", "")
+		etcdConfig := config.Conf.Common.CommonEtcd
+		etcdConfigOption := &store.Config{
+			ClientTLS:         nil,
+			TLS:               nil,
+			ConnectionTimeout: time.Duration(etcdConfig.ConnectionTimeout) * time.Second,
+			Bucket:            "",
+			PersistConnection: true,
+			Username:          etcdConfig.UserName,
+			Password:          etcdConfig.Password,
+		}
+		d, err := etcdV3.NewEtcdV3Discovery(
+			etcdConfig.BasePath,
+			etcdConfig.ServerPathLogic,
+			[]string{etcdConfig.Host},
+			true,
+			etcdConfigOption,
+		)
 		if err != nil {
 			panic(err)
 		}
-		LogicRpcClient = client.NewXClient("LogicRpc", client.Failtry, client.RandomSelect, d, client.DefaultOption)
+		LogicRpcClient = client.NewXClient(etcdConfig.ServerPathLogic, client.Failtry, client.RandomSelect, d, client.DefaultOption)
 
 		RpcLoginObj = new(RpcLogic)
 	})

@@ -7,8 +7,11 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/rcrowley/go-metrics"
+	"github.com/rpcxio/rpcx-etcd/serverplugin"
 	"github.com/smallnest/rpcx/server"
 	"github.com/zzjbattlefield/IM_GO/config"
 	"github.com/zzjbattlefield/IM_GO/model"
@@ -19,12 +22,46 @@ import (
 type LogicRpc struct{}
 
 func (logic *Logic) InitRpcServer() (err error) {
-	s := server.NewServer()
-	if err = s.RegisterName("LogicRpc", new(LogicRpc), ""); err != nil {
-		return err
+	var (
+		network string
+		address string
+	)
+	binds := strings.Split(config.Conf.LogicConfig.LogicBase.RpcAddress, ",")
+	for _, bind := range binds {
+		if network, address, err = tools.ParseNetwork(bind); err != nil {
+			config.Zap.Fatalf("InitRpcServer ParseNetwork err:%s", err.Error())
+			return
+		}
+		go logic.createLogicRpcServer(network, address)
 	}
-	err = s.Serve("tcp", "127.0.0.1:6900")
-	return err
+	return
+}
+
+func (logic *Logic) createLogicRpcServer(network, address string) {
+	s := server.NewServer()
+	addRegistryPlugin(s, network, address)
+	metadata := fmt.Sprintf("logic-%s", logic.ServiceID)
+	s.RegisterName(config.Conf.Common.CommonEtcd.ServerPathLogic, new(LogicRpc), metadata)
+	s.RegisterOnShutdown(func(s *server.Server) {
+		s.UnregisterAll()
+	})
+	if err := s.Serve(network, address); err != nil {
+		config.Zap.Fatalf("createLogicRpcServer rpc Serve err:%s", err.Error())
+	}
+}
+
+func addRegistryPlugin(s *server.Server, network, address string) {
+	r := &serverplugin.EtcdV3RegisterPlugin{
+		ServiceAddress: network + "@" + address,
+		EtcdServers:    []string{config.Conf.Common.CommonEtcd.Host},
+		BasePath:       config.Conf.Common.CommonEtcd.BasePath,
+		Metrics:        metrics.NewRegistry(),
+		UpdateInterval: time.Minute,
+	}
+	if err := r.Start(); err != nil {
+		config.Zap.Fatalf("addRegistryPlugin err:%s", err.Error())
+	}
+	s.Plugins.Add(r)
 }
 
 func (rpc *LogicRpc) Register(ctx context.Context, request *proto.RegisterRequest, reply *proto.RegisterResponse) (err error) {
