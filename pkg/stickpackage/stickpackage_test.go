@@ -58,7 +58,7 @@ func Test_TcpClient(t *testing.T) {
 	)
 	roomId := 1
 	fromUserID := 5
-	authToken := "UN_kcQQBv7MRZI9GYfD5OA4FxCXZ058xw6BvU3TqTZY="
+	authToken := "xoPhb2jo29ULQOzSiSh4gDIg79sfW8vhzHDp87hQV3M="
 	tcpAddrRemote, _ := net.ResolveTCPAddr("tcp4", "127.0.0.1:7001")
 	tcpClient, err = net.DialTCP("tcp", nil, tcpAddrRemote)
 	defer func() {

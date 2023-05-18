@@ -18,8 +18,9 @@ type ConnectRequest struct {
 }
 
 type DisConnectRequest struct {
-	RoomID int
-	UserID int
+	RoomID    int
+	UserID    int
+	ServiceID string
 }
 
 type DisConnectReply struct {

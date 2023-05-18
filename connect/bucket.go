@@ -60,7 +60,7 @@ func (b *Bucket) Room(rid int) (room *Room) {
 	return b.rooms[rid]
 }
 
-func (bucket *Bucket) DeleteChannel(ch *Channel) {
+func (bucket *Bucket) DeleteChannel(ch *Channel) (disConnect bool) {
 	var (
 		ok   bool
 		room *Room
@@ -76,6 +76,7 @@ func (bucket *Bucket) DeleteChannel(ch *Channel) {
 			delete(userClient, ch.UUID)
 			if len(userClient) == 0 {
 				//如果这个用户的所有客户端都已经断开了 那么就把这个用户从bucket里删掉
+				disConnect = true
 				delete(bucket.chs, ch.UserID)
 			}
 		}
@@ -86,6 +87,7 @@ func (bucket *Bucket) DeleteChannel(ch *Channel) {
 			delete(bucket.rooms, room.ID)
 		}
 	}
+	return
 }
 
 func (bucket *Bucket) Put(userID int, roomID int, ch *Channel) (err error) {

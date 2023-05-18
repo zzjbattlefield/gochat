@@ -95,12 +95,17 @@ func (s *Service) readPump(ch *Channel, c *Connect) {
 			return
 		}
 		config.Zap.Infoln("exec disConnect...")
-		disConnectReq := new(proto.DisConnectRequest)
-		disConnectReq.RoomID = ch.Room.ID
-		disConnectReq.UserID = ch.UserID
-		s.Bucket(ch.UserID).DeleteChannel(ch)
-		if err := s.operator.DisConnect(disConnectReq); err != nil {
-			config.Zap.Errorf("disConnect error :%v", err)
+		//可能当前的service有多个ws连接 如果还有别的连接在这个service里就不用调用DisConnect
+		//但是要把channel删除掉
+		if needDisConnect := s.Bucket(ch.UserID).DeleteChannel(ch); needDisConnect {
+			disConnectReq := new(proto.DisConnectRequest)
+			disConnectReq.RoomID = ch.Room.ID
+			disConnectReq.UserID = ch.UserID
+			disConnectReq.ServiceID = c.ServiceID
+			config.Zap.Infoln("exec rpc disConnect...")
+			if err := s.operator.DisConnect(disConnectReq); err != nil {
+				config.Zap.Errorf("disConnect error :%v", err)
+			}
 		}
 		ch.conn.Close()
 		config.Zap.Infoln("disConnect success")

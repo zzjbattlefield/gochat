@@ -81,13 +81,15 @@ func (c *Connect) readDataFromTcp(s *Service, ch *Channel) {
 			return
 		}
 		config.Zap.Info("exec disconnect...")
-		disconnReq := &proto.DisConnectRequest{
-			RoomID: ch.Room.ID,
-			UserID: ch.UserID,
-		}
-		s.Bucket(ch.UserID).DeleteChannel(ch)
-		if err := s.operator.DisConnect(disconnReq); err != nil {
-			config.Zap.Errorf("disConnect error :%s", err.Error())
+		if needDisConnect := s.Bucket(ch.UserID).DeleteChannel(ch); needDisConnect {
+			disconnReq := &proto.DisConnectRequest{
+				RoomID:    ch.Room.ID,
+				UserID:    ch.UserID,
+				ServiceID: c.ServiceID,
+			}
+			if err := s.operator.DisConnect(disconnReq); err != nil {
+				config.Zap.Errorf("disConnect error :%s", err.Error())
+			}
 		}
 		ch.connTcp.Close()
 	}()

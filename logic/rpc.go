@@ -146,24 +146,37 @@ func (rpc *LogicRpc) DisConnect(ctx context.Context, request *proto.DisConnectRe
 	logic := new(Logic)
 	roomUserKey := logic.GetRoomUserKey(strconv.Itoa(request.RoomID))
 	count, _ := RedisClient.Get(ctx, logic.GetRoomOnlineKey(strconv.Itoa(request.RoomID))).Int()
-	if count > 0 {
-		RedisClient.Decr(ctx, logic.GetRoomOnlineKey(strconv.Itoa(request.RoomID))).Result()
-	}
+
 	if request.UserID > 0 {
-		if err = RedisClient.HDel(ctx, roomUserKey, strconv.Itoa(request.UserID)).Err(); err != nil {
-			config.Zap.Warnf("RedisCli HGetAll roomUserInfo key:%s, err: %s", roomUserKey, err)
-		}
-		//广播一下当前的房间信息
-		userList, err := RedisClient.HGetAll(ctx, roomUserKey).Result()
+		serviceNum, err := RedisClient.SCard(ctx, logic.GetUserKey(strconv.Itoa(request.UserID))).Result()
 		if err != nil {
-			config.Zap.Errorf("Disconnect Get UserList Error:%v", err.Error())
-			return err
+			config.Zap.Warnf("RedisCli SCard userKey:%s, err: %s", logic.GetUserKey(strconv.Itoa(request.UserID)), err)
 		}
-		err = logic.RedisPushRoomInfo(request.RoomID, count-1, userList)
-		if err != nil {
-			config.Zap.Errorf("Disconnect Send RoomInfo Error:%v", err.Error())
-			return err
+		//删除一下用户所在的serviceID记录
+		if serviceNum > 0 {
+			if err = RedisClient.SRem(ctx, logic.GetUserKey(strconv.Itoa(request.UserID)), request.ServiceID).Err(); err != nil {
+				config.Zap.Warnf("RedisCli SRem userKey:%s, err: %s", logic.GetUserKey(strconv.Itoa(request.UserID)), err)
+			}
 		}
+		//如果当前用户的集合里没有serviceID了，就说明用户所有的客户端都下线了 在线人数需要-1
+		if count > 0 && serviceNum == 1 {
+			RedisClient.Decr(ctx, logic.GetRoomOnlineKey(strconv.Itoa(request.RoomID))).Result()
+			if err = RedisClient.HDel(ctx, roomUserKey, strconv.Itoa(request.UserID)).Err(); err != nil {
+				config.Zap.Warnf("RedisCli HGetAll roomUserInfo key:%s, err: %s", roomUserKey, err)
+			}
+			//广播一下当前的房间信息
+			userList, err := RedisClient.HGetAll(ctx, roomUserKey).Result()
+			if err != nil {
+				config.Zap.Errorf("Disconnect Get UserList Error:%v", err.Error())
+				return err
+			}
+			err = logic.RedisPushRoomInfo(request.RoomID, count-1, userList)
+			if err != nil {
+				config.Zap.Errorf("Disconnect Send RoomInfo Error:%v", err.Error())
+				return err
+			}
+		}
+
 	}
 	return
 }
